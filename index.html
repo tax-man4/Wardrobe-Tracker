@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Closet — wardrobe tracker</title>
+<link rel="icon" href="data:,">
+
+<!-- PWA App Tags (Required to make it an app) -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#26343B" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Closet" />
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root{
+    --ink:#26343B;
+    --ink-soft:#5C6B70;
+    --canvas:#E9EFF0;
+    --canvas-raised:#FAFBF8;
+    --line:#CAD6D6;
+    --rust:#B56A4A;
+    --sage:#71877A;
+    --denim:#526D82;
+    --mustard:#C49A54;
+    --plum:#806477;
+    --card-shadow:0 1px 0 rgba(43,38,32,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-tap-highlight-color:transparent;
+    padding-bottom:40px;
+  }
+  ::selection{background:var(--rust);color:#fff;}
+
+  .topbar{
+    padding:28px 20px 22px;
+    border-bottom:1px solid var(--line);
+  }
+  .topbar h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:30px;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+
+  .filters{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:16px 20px 4px;
+    scrollbar-width:none;
+  }
+  .filters::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.03em;
+    padding:6px 12px;
+    border:1px solid var(--line);
+    border-radius:20px;
+    background:var(--canvas-raised);
+    color:var(--ink-soft);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .chip.active{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:var(--canvas-raised);
+  }
+
+  .tools-row{display:flex;gap:8px;padding:10px 20px 0;align-items:center;flex-wrap:wrap;}
+  .tools-row input,.tools-row select,.tools-row button{font:12px Inter,sans-serif;background:var(--canvas-raised);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;}
+  .tools-row input{flex:1;min-width:120px;} .tools-row button{cursor:pointer;}
+  .undo-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:none;gap:12px;padding:10px 14px;background:var(--ink);color:var(--canvas-raised);border-radius:24px;z-index:25;font-size:12px;} .undo-bar.show{display:flex;} .undo-bar button{color:#E6C990;background:none;border:0;cursor:pointer;}
+  .calendar{
+    padding:16px 20px 8px;
+  }
+  .cal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .cal-title{
+    font-family:'Fraunces',serif;
+    font-size:17px;
+    font-weight:500;
+  }
+  .cal-nav{
+    display:flex;
+    gap:6px;
+  }
+  .cal-nav-btn{
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:var(--canvas-raised);
+    color:var(--ink);
+    font-size:15px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .cal-nav-btn:active{transform:scale(0.94);}
+  .cal-table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:4px;
+    table-layout:fixed;
+  }
+  .cal-weekdays th{
+    width:14.28%;
+    text-align:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;
+    font-weight:400;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    padding-bottom:6px;
+  }
+  .cal-table thead tr{
+    height:auto;
+  }
+  .cal-table tbody tr{
+    height:44px;
+  }
+  .cal-day{
+    width:14.28%;
+    height:44px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--canvas-raised);
+    text-align:center;
+    vertical-align:middle;
+    cursor:pointer;
+    padding:2px;
+    box-sizing:border-box;
+  }
+  .cal-day.empty{
+    border-color:rgba(216,207,184,0.4);
+    background:transparent;
+    cursor:default;
+  }
+  .cal-day.today{
+    border-color:var(--ink);
+    border-width:1.5px;
+  }
+  .cal-day.selected{
+    background:var(--ink);
+  }
+  .cal-day.selected .cal-daynum{
+    color:var(--canvas-raised);
+  }
+  .cal-daynum{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--ink-soft);
+  }
+  .cal-dots{
+    display:flex;
+    justify-content:center;
+    gap:2px;
+    margin-top:3px;
+  }
+  .cal-icon{width:12px;height:12px;display:block;flex:0 0 auto;}
+  .cal-dots{align-items:center;min-height:12px;}
+  .cal-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    border:0.5px solid rgba(43,38,32,0.2);
+  }
+  .cal-log-btn{display:block;width:100%;max-width:300px;margin:12px auto 4px;}
+  .wear-choice{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+  .wear-choice input{width:18px;height:18px;accent-color:var(--ink);}
+  .wear-choice-swatch{width:18px;height:18px;border-radius:50%;border:1px solid rgba(43,38,32,.18);flex:0 0 auto;}
+  .wear-choice-copy{flex:1;min-width:0;}
+  .wear-choice-name{font-family:'Fraunces',serif;font-size:14px;}
+  .wear-choice-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-soft);text-transform:uppercase;}
+  .wear-choice-status{font-size:10px;color:var(--ink-soft);}
+  #wear-date-label{font-size:13px;color:var(--ink-soft);margin:-8px 0 14px;}
+  .cal-detail{
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px dashed var(--line);
+  }
+  .cal-detail-title{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .cal-detail-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .cal-detail-item:last-child{border-bottom:none;}
+  .cal-detail-swatch{
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    flex:0 0 auto;
+    border:1px solid rgba(43,38,32,0.15);
+  }
+  .cal-detail-name{
+    font-family:'Fraunces',serif;
+    font-size:14px;
+  }
+  .cal-detail-cat{
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .cal-empty-note{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:20px 0;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+    padding:16px 20px 8px;
+  }
+
+  .tag{
+    position:relative;
+    background:var(--canvas-raised);
+    border:1px solid var(--line);
+    border-radius:10px 10px 4px 4px;
+    padding:14px 12px 12px;
+    box-shadow:var(--card-shadow);
+    cursor:pointer;
+    touch-action:pan-y;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+  }
+  .tag.dragging{
+    box-shadow:0 12px 28px rgba(43,38,32,0.28);
+    cursor:grabbing;
+    z-index:100;
+    transition:none;
+  }
+  .tag .swatch{
+    width:100%;
+    height:20px;
+    border-radius:10px;
+    margin-bottom:10px;
+    border:1.5px solid var(--ink);
+  }
+  .tag .name{
+    font-family:'Fraunces',serif;
+    font-size:15px;
+    font-weight:500;
+    line-height:1.25;
+    margin-bottom:4px;
+  }
+  .tag .meta{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+  }
+  .tag .worn-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px dashed var(--line);
+  }
+  .tag .worn-count{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .tag .worn-count b{
+    color:var(--ink);
+    font-size:13px;
+  }
+  .worn-actions{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .refresh-btn{
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:var(--canvas);
+    color:var(--ink-soft);
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex:0 0 auto;
+    padding:0;
+    line-height:1;
+  }
+  .refresh-btn:active{transform:scale(0.9) rotate(-70deg);}
+  .wear-btn{
+    font-family:'Inter',sans-serif;
+    font-size:11px;
+    font-weight:500;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--canvas-raised);
+    border-radius:14px;
+    padding:5px 10px;
+    cursor:pointer;
+  }
+  .wear-btn:active{transform:scale(0.95);}
+  .fav-star{
+    position:absolute;
+    top:6px;
+    left:8px;
+    font-size:13px;
+    color:var(--mustard);
+  }
+
+  #grid .empty{
+    grid-column:1/-1;
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-soft);
+  }
+  #grid .empty .glyph{
+    font-family:'Fraunces',serif;
+    font-size:40px;
+    margin-bottom:10px;
+    opacity:0.4;
+  }
+  #grid .empty p{font-size:14px;line-height:1.6;margin:0;}
+
+  .fab{
+    position:fixed;
+    bottom:22px;
+    right:22px;
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    background:var(--ink);
+    color:var(--canvas-raised);
+    border:none;
+    font-size:26px;
+    line-height:56px;
+    text-align:center;
+    box-shadow:0 4px 14px rgba(43,38,32,0.35);
+    cursor:pointer;
+    z-index:20;
+  }
+  .fab:active{transform:scale(0.94);}
+
+  .sheet-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(43,38,32,0.45);
+    z-index:30;
+    display:none;
+    align-items:flex-end;
+  }
+  .sheet-backdrop.open{display:flex;}
+  .sheet{
+    background:var(--canvas-raised);
+    width:100%;
+    max-height:88vh;
+    overflow-y:auto;
+    border-radius:18px 18px 0 0;
+    padding:20px 20px 28px;
+  }
+  .sheet h2{
+    font-family:'Fraunces',serif;
+    font-size:20px;
+    font-weight:600;
+    margin:0 0 16px;
+  }
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .field input[type=text], .field input[type=number], .field select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+  }
+  .field input:focus, .field select:focus{
+    outline:none;
+    border-color:var(--ink);
+  }
+  .color-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .color-dot{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+  }
+  .color-dot.selected{
+    border-color:var(--ink);
+  }
+  .custom-color-row{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:10px;
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px dashed var(--line);
+  }
+  .custom-color-swatch{
+    position:relative;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex:0 0 auto;
+    background:
+      conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  }
+  .custom-color-swatch.selected{
+    border-color:var(--ink);
+  }
+  .custom-color-swatch #custom-color-plus{
+    display:none;
+  }
+  #f-custom-color{
+    position:absolute;
+    width:1px;
+    height:1px;
+    opacity:0;
+    pointer-events:none;
+  }
+  .custom-color-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .hex-color-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--ink-soft);}
+  #f-color-hex{width:96px;min-width:82px;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--canvas);color:var(--ink);font:12px 'JetBrains Mono',monospace;text-transform:uppercase;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .fav-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    margin-bottom:16px;
+  }
+  .fav-toggle input{width:16px;height:16px;}
+  .sheet-actions{
+    display:flex;
+    gap:10px;
+    margin-top:6px;
+  }
+  .btn{
+    flex:1;
+    padding:12px;
+    border-radius:9px;
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    cursor:pointer;
+    border:1px solid var(--line);
+    background:var(--canvas);
+    color:var(--ink);
+  }
+  .btn.primary{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:var(--canvas-raised);
+  }
+  .btn.danger{
+    background:transparent;
+    border-color:var(--rust);
+    color:var(--rust);
+  }
+  .btn:active{transform:scale(0.98);}
+
+  .loading{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+  }
+
+  .save-toast{
+    position:fixed;
+    top:16px;
+    left:50%;
+    transform:translateX(-50%) translateY(-10px);
+    background:var(--ink);
+    color:var(--canvas-raised);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    padding:8px 14px;
+    border-radius:20px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    z-index:50;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .save-toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  .save-toast.error{
+    background:var(--rust);
+  }
+  .save-toast .dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:currentColor;
+    opacity:0.9;
+  }
+</style>
+</head>
+<body>
+
+<div class="save-toast" id="save-toast"><span class="dot"></span><span id="save-toast-text">saved</span></div>
+
+<div class="topbar">
+  <h1>Haadhi's Closet</h1>
+</div>
+
+<div class="filters" id="filters" style="display:none;"></div>
+<div class="tools-row" id="tools-row" style="display:none;"><input id="search-items" type="search" placeholder="Search name, type, color"><select id="sort-items"><option value="default">Default</option><option value="name">Name A–Z</option><option value="most">Most worn</option><option value="least">Least worn</option><option value="recent">Recently added</option></select><button id="export-data">Export</button><button id="import-data-button">Import</button><input id="import-data" type="file" accept=".json,application/json" hidden></div><div class="undo-bar" id="undo-bar"><span id="undo-label">Change saved</span><button id="undo-action">Undo</button></div>
+
+<div class="grid" id="grid"></div>
+<div class="calendar" id="calendar" style="display:none;"></div>
+
+<div class="loading" id="loading">opening the closet…</div>
+
+<button class="fab" id="fab" aria-label="Add item" style="display:none;">+</button>
+
+<div class="sheet-backdrop" id="wear-backdrop"><div class="sheet"><h2>Log outfit</h2><div id="wear-date-label"></div><div id="wear-item-list"></div><div class="sheet-actions"><button class="btn" id="wear-cancel">Cancel</button><button class="btn primary" id="wear-save">Save outfit</button></div></div></div>
+<div class="sheet-backdrop" id="backdrop">
+  <div class="sheet">
+    <h2 id="sheet-title">Add item</h2>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="f-name" placeholder="Blue chambray shirt" />
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Category</label>
+        <select id="f-category">
+          <option>Tops</option>
+          <option>Bottoms</option>
+          <option>Shoes</option>
+          <option>Accessories</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <select id="f-type"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Color</label>
+      <div class="color-row" id="color-row"></div>
+      <div class="custom-color-row">
+        <label class="custom-color-swatch" id="custom-color-swatch" for="f-custom-color">
+          <span id="custom-color-plus">+</span>
+        </label>
+        <input type="color" id="f-custom-color" value="#B24E33" />
+        <span class="custom-color-label" id="custom-color-label">custom shade</span>
+        <label class="hex-color-label" for="f-color-hex">HEX</label>
+        <input type="text" id="f-color-hex" value="#211E1A" placeholder="#B24E33" maxlength="7" inputmode="text" autocomplete="off" aria-label="Custom color hex code" />
+      </div>
+    </div>
+    <label class="fav-toggle">
+      <input type="checkbox" id="f-fav" />
+      Mark as favorite
+    </label>
+    <div class="sheet-actions">
+      <button class="btn danger" id="btn-delete" style="display:none;">Delete</button>
+      <button class="btn" id="btn-cancel">Cancel</button>
+      <button class="btn primary" id="btn-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = [
+  {name:'black', hex:'#211E1A'},
+  {name:'charcoal', hex:'#3A362E'},
+  {name:'grey', hex:'#8A8578'},
+  {name:'white', hex:'#F7F3E8'},
+  {name:'cream', hex:'#E8DEC4'},
+  {name:'beige', hex:'#C9B08C'},
+  {name:'tan', hex:'#A87C4F'},
+  {name:'brown', hex:'#6B4A32'},
+  {name:'rust', hex:'#B24E33'},
+  {name:'red', hex:'#B0332C'},
+  {name:'coral', hex:'#D9754F'},
+  {name:'mustard', hex:'#B8862B'},
+  {name:'yellow', hex:'#D9B23C'},
+  {name:'olive', hex:'#6E6B39'},
+  {name:'sage', hex:'#6E7A5C'},
+  {name:'green', hex:'#4C7A4A'},
+  {name:'mint', hex:'#8FBBA3'},
+  {name:'teal', hex:'#3D7A73'},
+  {name:'denim', hex:'#455A73'},
+  {name:'navy', hex:'#293B57'},
+  {name:'blue', hex:'#3E6FA8'},
+  {name:'sky', hex:'#8CB4D4'},
+  {name:'lavender', hex:'#9C8FC2'},
+  {name:'plum', hex:'#7A5468'},
+  {name:'purple', hex:'#6A4570'},
+  {name:'magenta', hex:'#A5406E'},
+  {name:'pink', hex:'#D896A8'},
+  {name:'blush', hex:'#E2BFB8'},
+];
+const CATEGORY_KEY = 'wardrobe:items';
+
+let items = [];
+let wearLog = [];
+let activeFilter = 'Calendar';
+let editingId = null;
+let selectedColor = COLORS[0].hex;
+let calDate = new Date();
+let selectedDay = null;
+let undoSnapshot=null, undoTimer=null;
+
+function uid(){ return 'w' + Date.now() + Math.random().toString(36).slice(2,7); }
+function pad2(n){ return n<10 ? '0'+n : ''+n; }
+function toDateStr(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+
+async function loadItems(){
+  let foundExisting = false;
+  try{
+    const raw = localStorage.getItem(CATEGORY_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)){
+        items = parsed;
+        wearLog = [];
+      }else{
+        items = parsed.items || [];
+        wearLog = parsed.wearLog || [];
+      }
+      foundExisting = true;
+    }
+  }catch(e){
+    items = [];
+    wearLog = [];
+  }
+  document.getElementById('loading').style.display = 'none';
+  if(foundExisting){
+    flashToast(`loaded ${items.length} item${items.length===1?'':'s'}`);
+  }
+  document.getElementById('filters').style.display = 'flex';
+  document.getElementById('fab').style.display = 'block';
+  renderFilters();
+  document.getElementById('tools-row').style.display='flex';
+  render();
+}
+
+let toastTimer = null;
+function flashToast(text, isError){
+  const toast = document.getElementById('save-toast');
+  const label = document.getElementById('save-toast-text');
+  label.textContent = text;
+  toast.classList.toggle('error', !!isError);
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ toast.classList.remove('show'); }, isError ? 2600 : 1300);
+}
+
+async function saveItems(message='saved'){
+  try{
+    localStorage.setItem(CATEGORY_KEY, JSON.stringify({items, wearLog}));
+    flashToast(message);
+  }catch(e){
+    console.error('save failed', e);
+    flashToast('save failed — check connection', true);
+  }
+}
+
+function renderFilters(){
+  const cats = ['Calendar','Tops','Bottoms','Shoes','Accessories'];
+  const el = document.getElementById('filters');
+  el.innerHTML = '';
+  cats.forEach(c=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (c===activeFilter ? ' active' : '');
+    chip.textContent = c;
+    chip.onclick = ()=>{ activeFilter = c; renderFilters(); render(); };
+    el.appendChild(chip);
+  });
+}
+
+function render(){
+  const grid = document.getElementById('grid');
+  const cal = document.getElementById('calendar');
+
+  if(activeFilter==='Calendar'){
+    document.getElementById('tools-row').style.display='none';
+    grid.style.display = 'none';
+    cal.style.display = 'block';
+    renderCalendar();
+    return;
+  }
+  document.getElementById('tools-row').style.display='flex';
+  cal.style.display = 'none';
+  grid.style.display = 'grid';
+
+  grid.innerHTML = '';
+  const query=document.getElementById('search-items').value.trim().toLowerCase(), sortBy=document.getElementById('sort-items').value;
+  let filtered=items.filter(i=>i.category===activeFilter&&(!query||[i.name,i.type,i.color].some(v=>String(v||'').toLowerCase().includes(query))));
+  if(sortBy==='name')filtered.sort((a,b)=>a.name.localeCompare(b.name));
+  if(sortBy==='most')filtered.sort((a,b)=>(b.worn||0)-(a.worn||0));
+  if(sortBy==='least')filtered.sort((a,b)=>(a.worn||0)-(b.worn||0));
+  if(sortBy==='recent')filtered.sort((a,b)=>(b.added||0)-(a.added||0));
+
+  if(filtered.length===0){
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerHTML = items.length===0
+      ? `<div class="glyph">&#9788;</div><p>Nothing catalogued yet.<br/>Tap + to add your first piece.</p>`
+      : `<div class="glyph">&#9788;</div><p>No items in ${activeFilter} yet.</p>`;
+    grid.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach(item=>{
+    const card = document.createElement('div');
+    card.className = 'tag';
+    card.dataset.id = item.id;
+    card.innerHTML = `
+      ${item.fav ? '<div class="fav-star">&#9733;</div>' : ''}
+      <div class="swatch" style="background:${item.color}"></div>
+      <div class="name">${escapeHtml(item.name)}</div>
+      <div class="meta">${item.category} &middot; ${item.type}</div>
+      <div class="worn-row">
+        <div class="worn-count">worn <b>${item.worn}</b>x</div>
+        <div class="worn-actions">
+          <button class="refresh-btn" data-id="${item.id}" aria-label="Reset worn count; calendar history stays" title="Reset count; calendar history stays">&#8635;</button>
+          <button class="wear-btn" data-id="${item.id}">worn today</button>
+        </div>
+      </div>
+    `;
+    card.addEventListener('click', (e)=>{
+      if(e.target.closest('.wear-btn') || e.target.closest('.refresh-btn')) return;
+      if(card.dataset.justDragged==='1'){ card.dataset.justDragged=''; return; }
+      openSheet(item);
+    });
+    card.querySelector('.wear-btn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      recordUndo("Logged wear for "+item.name);
+      item.worn=(item.worn||0)+1;
+      logWear(item, toDateStr(new Date()));
+      saveItems();
+      render();
+    });
+    card.querySelector('.refresh-btn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      recordUndo('Reset count for '+item.name);
+      item.worn=0;
+      saveItems('count reset · calendar kept');
+      render();
+    });
+    enableDrag(card, grid);
+    grid.appendChild(card);
+  });
+}
+
+function enableDrag(card, grid){
+  let startX=0, startY=0, longPressTimer=null, dragging=false, pointerId=null;
+
+  function cleanup(){
+    clearTimeout(longPressTimer);
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+  }
+
+  function onPointerMove(e){
+    if(e.pointerId!==pointerId) return;
+    if(!dragging){
+      if(Math.abs(e.clientX-startX)>10 || Math.abs(e.clientY-startY)>10){
+        cleanup();
+      }
+      return;
+    }
+    e.preventDefault();
+    const dx = e.clientX-startX, dy = e.clientY-startY;
+    card.style.transform = `translate(${dx}px, ${dy}px) scale(1.03)`;
+
+    card.style.pointerEvents = 'none';
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    card.style.pointerEvents = '';
+    const target = under ? under.closest('.tag') : null;
+    if(target && target!==card && grid.contains(target)){
+      const cards = [...grid.children];
+      const cardIdx = cards.indexOf(card);
+      const targetIdx = cards.indexOf(target);
+      if(cardIdx<targetIdx){ grid.insertBefore(card, target.nextSibling); }
+      else{ grid.insertBefore(card, target); }
+      startX = e.clientX;
+      startY = e.clientY;
+      card.style.transform = 'translate(0,0) scale(1.03)';
+    }
+  }
+
+  function onPointerUp(e){
+    if(e.pointerId!==pointerId) return;
+    cleanup();
+    if(dragging){
+      dragging = false;
+      card.classList.remove('dragging');
+      card.style.transform = '';
+      card.dataset.justDragged = '1';
+      persistOrderFromDom(grid);
+    }
+    pointerId = null;
+  }
+
+  card.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('.wear-btn') || e.target.closest('.refresh-btn')) return;
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    startX = e.clientX; startY = e.clientY;
+    pointerId = e.pointerId;
+    dragging = false;
+    longPressTimer = setTimeout(()=>{
+      dragging = true;
+      card.classList.add('dragging');
+      card.style.transform = 'translate(0,0) scale(1.03)';
+    }, 350);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  });
+}
+
+function persistOrderFromDom(grid){
+  const orderedIds = [...grid.children].map(c=>c.dataset.id).filter(Boolean);
+  const idToItem = new Map(items.map(i=>[i.id,i]));
+  const indices = [];
+  items.forEach((it,idx)=>{ if(it.category===activeFilter) indices.push(idx); });
+  orderedIds.forEach((id,i)=>{
+    if(indices[i]!==undefined && idToItem.has(id)) items[indices[i]] = idToItem.get(id);
+  });
+  saveItems();
+}
+
+function logWear(item, dateStr){
+  wearLog=wearLog.filter(w=>!(w.date===dateStr&&w.itemId===item.id));
+  wearLog.push({date:dateStr, itemId:item.id, name:item.name, category:item.category, type:item.type, color:item.color});
+}
+
+function renderCalendar(){
+  const cal = document.getElementById('calendar');
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = firstOfMonth.getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const todayStr = toDateStr(new Date());
+
+  function cellHtml(d){
+    if(d===null) return `<td class="cal-day empty"></td>`;
+    const dateStr = year+'-'+pad2(month+1)+'-'+pad2(d);
+    const dayEntries = wearLog.filter(w=>w.date===dateStr);
+    const isCapEntry=entry=>entry.category==='Accessories'&&(((entry.type||items.find(i=>i.id===entry.itemId)?.type||'').toLowerCase()==='cap')||/cap/i.test(entry.name||''));
+    let dots = '';
+    dayEntries.slice().sort((a,b)=>Number(isCapEntry(b))-Number(isCapEntry(a))).forEach(entry=>{
+      const color=escapeHtml(entry.color||'#999999');
+      if(entry.category==='Shoes'){
+        dots += '<svg class="cal-icon" viewBox="0 0 24 24" role="img" aria-label="Shoe"><path fill="'+color+'" d="M2.5 14.8c2.4 0 4-.8 4.8-2.6l1.1-3.1 3.1 1.1 2.3 3.1 5.4 1.3c1.6.4 2.4 1.4 2.4 2.9v1.2H3.2c-1.2 0-2-.8-2-1.9 0-.9.5-1.6 1.3-2z"/></svg>';
+      }else if(isCapEntry(entry)){
+        dots += '<svg class="cal-icon" viewBox="0 0 24 24" role="img" aria-label="Cap"><path fill="'+color+'" d="M3 14.8c.3-4.3 3.9-7.6 8.4-7.6 3.9 0 7 2.5 7.7 6l2.4 1c.8.3.7 1.5-.2 1.7l-16.6 2.5c-1.5.2-2.3-1.5-1.2-2.4l1.2-1.2z"/></svg>';
+      }else{dots += '<div class="cal-dot" style="background:'+color+'"></div>';}
+    });
+    const classes = ['cal-day'];
+    if(dateStr===todayStr) classes.push('today');
+    if(dateStr===selectedDay) classes.push('selected');
+    return `<td class="${classes.join(' ')}" data-date="${dateStr}">
+      <div class="cal-daynum">${d}</div>
+      <div class="cal-dots">${dots}</div>
+    </td>`;
+  }
+
+  const cells = [];
+  for(let i=0;i<startOffset;i++) cells.push(null);
+  for(let d=1; d<=daysInMonth; d++) cells.push(d);
+  while(cells.length % 7 !== 0) cells.push(null);
+
+  let rowsHtml = '';
+  for(let r=0; r<cells.length; r+=7){
+    const week = cells.slice(r, r+7);
+    rowsHtml += `<tr>${week.map(cellHtml).join('')}</tr>`;
+  }
+
+  cal.innerHTML = `
+    <div class="cal-header">
+      <button class="cal-nav-btn" id="cal-prev" aria-label="Previous month">&#8249;</button>
+      <div class="cal-title">${monthNames[month]} ${year}</div>
+      <button class="cal-nav-btn" id="cal-next" aria-label="Next month">&#8250;</button>
+    </div>
+    <table class="cal-table">
+      <thead>
+        <tr class="cal-weekdays"><th>S</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th></tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <div class="cal-detail" id="cal-detail"></div>
+  `;
+
+  document.getElementById('cal-prev').addEventListener('click', ()=>{
+    calDate = new Date(year, month-1, 1);
+    render();
+  });
+  document.getElementById('cal-next').addEventListener('click', ()=>{
+    calDate = new Date(year, month+1, 1);
+    render();
+  });
+  cal.querySelectorAll('.cal-day[data-date]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedDay = el.getAttribute('data-date');
+      render();
+    });
+  });
+
+  renderCalDetail();
+}
+
+function renderCalDetail(){
+  const detail = document.getElementById('cal-detail');
+  if(!detail) return;
+  if(!selectedDay){
+    detail.innerHTML = `<div class="cal-empty-note">Tap a day to see what you wore.</div>`;
+    return;
+  }
+  const entries = wearLog.filter(w=>w.date===selectedDay);
+  const [y,m,d] = selectedDay.split('-');
+  const label = new Date(y, m-1, d).toLocaleDateString(undefined, {weekday:'long', month:'long', day:'numeric'});
+  if(entries.length===0){
+    detail.innerHTML = `<div class="cal-detail-title">${label}</div><div class="cal-empty-note">Nothing logged this day.</div>`;
+    addLogOutfitButton(detail);
+    return;
+  }
+  detail.innerHTML = `<div class="cal-detail-title">${label}</div>` +
+    entries.map(e=>`
+      <div class="cal-detail-item">
+        <div class="cal-detail-swatch" style="background:${e.color}"></div>
+        <div>
+          <div class="cal-detail-name">${escapeHtml(e.name)}</div>
+          <div class="cal-detail-cat">${e.category}</div>
+        </div>
+      </div>
+    `).join('');
+  addLogOutfitButton(detail);
+}
+
+function addLogOutfitButton(detail){
+  const button=document.createElement('button');button.className='btn primary cal-log-btn';button.textContent='Add outfit to this date';
+  button.addEventListener('click',()=>openWearSheet(selectedDay));detail.appendChild(button);
+}
+function openWearSheet(dateStr){
+  if(items.length===0){flashToast('add wardrobe items first',true);return;}
+  const parts=dateStr.split('-'),label=new Date(parts[0],parts[1]-1,parts[2]).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('wear-date-label').textContent=label;const list=document.getElementById('wear-item-list');list.innerHTML='';
+  items.forEach(item=>{
+    const logged=wearLog.some(entry=>entry.date===dateStr&&entry.itemId===item.id),row=document.createElement('label');row.className='wear-choice';
+    const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.value=item.id;checkbox.checked=logged;checkbox.disabled=logged;
+    const swatch=document.createElement('span');swatch.className='wear-choice-swatch';swatch.style.background=item.color||'#999999';
+    const copy=document.createElement('span');copy.className='wear-choice-copy';copy.innerHTML='<span class="wear-choice-name">'+escapeHtml(item.name)+'</span><br><span class="wear-choice-meta">'+escapeHtml(item.category)+' · '+escapeHtml(item.type||'')+'</span>';
+    row.append(checkbox,swatch,copy);if(logged){const status=document.createElement('span');status.className='wear-choice-status';status.textContent='Logged';row.appendChild(status);}list.appendChild(row);
+  });
+  document.getElementById('wear-backdrop').classList.add('open');
+}
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function buildColorRow(){
+  const row = document.getElementById('color-row');
+  row.innerHTML = '';
+  const isPreset = COLORS.some(c=>c.hex===selectedColor);
+  COLORS.forEach(c=>{
+    const dot = document.createElement('div');
+    dot.className = 'color-dot' + (isPreset && c.hex===selectedColor ? ' selected' : '');
+    dot.style.background = c.hex;
+    dot.title = c.name;
+    dot.onclick = ()=>{ selectedColor = c.hex; buildColorRow(); };
+    row.appendChild(dot);
+  });
+  updateCustomSwatch(isPreset);
+}
+
+function updateCustomSwatch(isPresetSelected){
+  const swatch = document.getElementById('custom-color-swatch');
+  const input = document.getElementById('f-custom-color');
+  const label = document.getElementById('custom-color-label');
+  const hexInput = document.getElementById('f-color-hex');
+  hexInput.value = selectedColor.toUpperCase();
+  if(!isPresetSelected){
+    swatch.style.background = selectedColor;
+    swatch.classList.add('selected');
+    input.value = selectedColor;
+    label.textContent = selectedColor;
+  }else{
+    swatch.style.background = 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)';
+    swatch.classList.remove('selected');
+    label.textContent = 'custom shade';
+  }
+}
+
+document.getElementById('f-custom-color').addEventListener('input', (e)=>{
+  selectedColor = e.target.value;
+  buildColorRow();
+});
+document.getElementById('f-color-hex').addEventListener('input', e=>{
+  let value=e.target.value.trim();
+  if(!/^#?(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return;
+  if(!value.startsWith('#')) value='#'+value;
+  if(value.length===4) value='#'+value[1]+value[1]+value[2]+value[2]+value[3]+value[3];
+  selectedColor=value.toUpperCase();
+  buildColorRow();
+});
+
+const TYPES_BY_CATEGORY = {Tops:['Shirt','T-shirt'],Bottoms:['Jeans','Trousers','Chinos','Cargos'],Shoes:['Sneakers','Boots','Casual shoes','Clogs','Loafers'],Accessories:['Watch','Cap']};
+function updateTypeOptions(category, selectedType){
+  const select=document.getElementById('f-type'), options=TYPES_BY_CATEGORY[category]||[];
+  select.replaceChildren(...options.map(type=>{const option=document.createElement('option');option.value=type;option.textContent=type;return option;}));
+  select.value=options.includes(selectedType)?selectedType:(options[0]||'');
+}
+
+function openSheet(item){
+  editingId = item ? item.id : null;
+  document.getElementById('sheet-title').textContent = item ? 'Edit item' : 'Add item';
+  document.getElementById('f-name').value = item ? item.name : '';
+  document.getElementById('f-category').value = item ? item.category : 'Tops';
+  updateTypeOptions(item ? item.category : 'Tops', item ? item.type : 'Shirt');
+  document.getElementById('f-fav').checked = item ? !!item.fav : false;
+  selectedColor = item ? item.color : COLORS[0].hex;
+  buildColorRow();
+  document.getElementById('btn-delete').style.display = item ? 'block' : 'none';
+  document.getElementById('backdrop').classList.add('open');
+}
+
+function closeSheet(){
+  document.getElementById('backdrop').classList.remove('open');
+}
+
+document.getElementById('f-category').addEventListener('change', e=>updateTypeOptions(e.target.value));
+document.getElementById('fab').addEventListener('click', ()=>openSheet(null));
+document.getElementById('btn-cancel').addEventListener('click', closeSheet);
+document.getElementById('backdrop').addEventListener('click', (e)=>{
+  if(e.target.id==='backdrop') closeSheet();
+});
+
+document.getElementById('btn-save').addEventListener('click', ()=>{
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){ document.getElementById('f-name').focus(); return; }
+  const category = document.getElementById('f-category').value;
+  const type = document.getElementById('f-type').value;
+  const fav = document.getElementById('f-fav').checked;
+
+  if(editingId){
+    const item = items.find(i=>i.id===editingId);
+    Object.assign(item, {name, category, type, fav, color:selectedColor});
+  }else{
+    items.push({
+      id: uid(), name, category, type, fav,
+      color: selectedColor, worn: 0, added: Date.now()
+    });
+  }
+  saveItems();
+  closeSheet();
+  render();
+});
+
+document.getElementById('btn-delete').addEventListener('click', ()=>{
+  const item=items.find(i=>i.id===editingId);
+  if(!item||!confirm('Delete '+item.name+'? Its calendar history will be kept.'))return;
+  recordUndo('Deleted '+item.name);
+  items=items.filter(i=>i.id!==editingId);
+  saveItems();
+  closeSheet();
+  render();
+});
+
+function recordUndo(label){
+  undoSnapshot=JSON.parse(JSON.stringify({items,wearLog}));document.getElementById('undo-label').textContent=label;document.getElementById('undo-bar').classList.add('show');clearTimeout(undoTimer);undoTimer=setTimeout(()=>document.getElementById('undo-bar').classList.remove('show'),8000);
+}
+document.getElementById('undo-action').addEventListener('click',()=>{if(!undoSnapshot)return;items=undoSnapshot.items;wearLog=undoSnapshot.wearLog;undoSnapshot=null;clearTimeout(undoTimer);document.getElementById('undo-bar').classList.remove('show');saveItems('change undone');render();});
+document.getElementById('search-items').addEventListener('input',render);
+document.getElementById('sort-items').addEventListener('change',render);
+document.getElementById('export-data').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({items,wearLog},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='wardrobe-backup-'+toDateStr(new Date())+'.json';link.click();URL.revokeObjectURL(url);flashToast('backup exported');});
+document.getElementById('import-data-button').addEventListener('click',()=>document.getElementById('import-data').click());
+document.getElementById('import-data').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text()),ni=Array.isArray(d)?d:d.items,nl=Array.isArray(d)?[]:d.wearLog;if(!Array.isArray(ni)||!ni.every(i=>i&&i.id&&i.name&&i.category))throw Error();if(!confirm('Import '+ni.length+' items? This replaces the current wardrobe and calendar history.'))return;recordUndo('Imported backup');items=ni;wearLog=Array.isArray(nl)?nl:[];saveItems('backup imported');renderFilters();render();}catch(err){flashToast('could not read that backup',true);}finally{e.target.value='';}});
+document.getElementById('wear-cancel').addEventListener('click',()=>document.getElementById('wear-backdrop').classList.remove('open'));
+document.getElementById('wear-backdrop').addEventListener('click',e=>{if(e.target.id==='wear-backdrop')e.currentTarget.classList.remove('open');});
+document.getElementById('wear-save').addEventListener('click',()=>{
+  const dateStr=selectedDay,selected=[...document.querySelectorAll('#wear-item-list input[type="checkbox"]:checked:not(:disabled)')];
+  if(selected.length===0){flashToast('select at least one item',true);return;}
+  recordUndo('Logged outfit for '+dateStr);
+  selected.forEach(box=>{const item=items.find(entry=>entry.id===box.value);if(item){item.worn=(item.worn||0)+1;logWear(item,dateStr);}});
+  document.getElementById('wear-backdrop').classList.remove('open');saveItems('outfit added to calendar');render();
+});
+
+// Register offline Service Worker to enable app install
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(console.error);
+}
+
+loadItems();
+</script>
+</body>
+</html>
