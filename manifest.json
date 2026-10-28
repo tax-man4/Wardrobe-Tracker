@@ -1,0 +1,16 @@
+{
+  "name": "Haadhi's Closet",
+  "short_name": "Closet",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#E9EFF0",
+  "theme_color": "#26343B",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2326343B'/><text y='65' x='50' text-anchor='middle' font-size='50' fill='%23FAFBF8'>👔</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
